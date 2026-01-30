@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 10px; background-color: #f8f9fa; }
+      .form-group { margin-bottom: 12px; }
+      label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 13px; color: #5f6368; }
+      input, select { width: 100%; padding: 10px; border: 1px solid #dadce0; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+      button { width: 100%; padding: 12px; background-color: #1a73e8; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+      button:disabled { background-color: #ccc; }
+      #message { margin-top: 10px; padding: 10px; border-radius: 4px; display: none; text-align: center; font-size: 13px; }
+      .success { background-color: #e6f4ea; color: #1e8e3e; border: 1px solid #1e8e3e; }
+      .error { background-color: #fce8e6; color: #d93025; border: 1px solid #d93025; }
+    </style>
+  </head>
+  <body>
+    <div class="form-group">
+      <label>保存先シート</label>
+      <select id="sheetName">
+        <option value="家庭用_台帳">🏠 家庭用</option>
+        <option value="個人用_台帳">👤 個人用</option>
+      </select>
+    </div>
+
+    <div class="form-group"><label>日付</label><input type="date" id="date"></div>
+
+    <div class="form-group">
+      <label>収支種別</label>
+      <select id="type" onchange="updateCategories()">
+        <option value="expense">支出</option>
+        <option value="income">収入</option>
+      </select>
+    </div>
+
+    <div class="form-group"><label>カテゴリー</label><select id="category"></select></div>
+    <div class="form-group"><label>金額 (SGD)</label><input type="number" id="amount" step="0.01" placeholder="0.00"></div>
+    <div class="form-group"><label>品名</label><input type="text" id="itemName" placeholder="例：ランチ"></div>
+    
+    <div class="form-group">
+      <label>店舗名 / サービス名</label>
+      <select id="shopSelect" onchange="toggleShopInput()">
+        <option value="">-- 選択してください --</option>
+        <option value="FairPrice">FairPrice</option>
+        <option value="Cold Storage">Cold Storage</option>
+        <option value="Giant">Giant</option>
+        <option value="Sheng Siong">Sheng Siong</option>
+        <option value="Don Don Donki">Don Don Donki</option>
+        <option value="Meidi-Ya">Meidi-Ya</option>
+        <option value="Isetan Supermarket">Isetan</option>
+        <option value="Shopee">Shopee</option>
+        <option value="Lazada">Lazada</option>
+        <option value="Amazon SG">Amazon SG</option>
+        <option value="Grab">Grab (Food/Transport)</option>
+        <option value="Foodpanda">Foodpanda</option>
+        <option value="7-Eleven">7-Eleven</option>
+        <option value="Daiso">Daiso</option>
+        <option value="Watsons">Watsons</option>
+        <option value="Guardian">Guardian</option>
+        <option value="Other">直接入力する...</option>
+      </select>
+      <input type="text" id="shopNameManual" placeholder="店舗名を入力" style="display:none; margin-top:5px;">
+    </div>
+
+    <button id="submitBtn" onclick="submitForm()">スプレッドシートに保存</button>
+    <div id="message"></div>
+
+    <script>
+      const categoryOptions = {
+        expense: [
+          { val: '食費', text: '🍲 食費' }, 
+          { val: '外食', text: '🍕 外食' },
+          { val: '日用品', text: '🛒 日用品' }, 
+          { val: '交通費', text: '🚇 交通費' },
+          { val: '娯楽費', text: '🎮 娯楽費' }, 
+          { val: '通信費', text: '📱 通信費' },
+          { val: '美容/衣類', text: '💇 美容/衣類' },
+          { val: '医療費(保険料)', text: '🏥 医療費(保険料)' },
+          { val: '家賃/光熱費', text: '🏠 家賃/光熱費' }, 
+          { val: 'その他', text: '📦 その他' }
+        ],
+        income: [
+          { val: '給与（月収）', text: '💰 給与（月収）' },
+          { val: 'ボーナス', text: '✨ ボーナス' },
+          { val: '精算金', text: '🔄 精算金' }
+        ]
+      };
+
+      function updateCategories() {
+        const type = document.getElementById('type').value;
+        const categorySelect = document.getElementById('category');
+        categorySelect.innerHTML = '';
+        categoryOptions[type].forEach(opt => {
+          const option = document.createElement('option');
+          option.value = opt.val;
+          option.textContent = opt.text;
+          categorySelect.appendChild(option);
+        });
+      }
+
+      function toggleShopInput() {
+        const select = document.getElementById('shopSelect');
+        const manualInput = document.getElementById('shopNameManual');
+        manualInput.style.display = (select.value === 'Other') ? 'block' : 'none';
+      }
+
+      window.onload = function() {
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = ("0" + (today.getMonth() + 1)).slice(-2);
+        const d = ("0" + today.getDate()).slice(-2);
+        document.getElementById('date').value = y + "-" + m + "-" + d;
+        updateCategories();
+      };
+
+      function submitForm() {
+        const btn = document.getElementById('submitBtn');
+        const select = document.getElementById('shopSelect');
+        const manualInput = document.getElementById('shopNameManual');
+        const shopName = (select.value === 'Other') ? manualInput.value : select.value;
+
+        const data = {
+          sheetName: document.getElementById('sheetName').value,
+          date: document.getElementById('date').value,
+          type: document.getElementById('type').value,
+          category: document.getElementById('category').value,
+          amount: document.getElementById('amount').value,
+          itemName: document.getElementById('itemName').value,
+          shopName: shopName
+        };
+
+        if (!data.amount || data.amount <= 0) {
+          showMessage('正しい金額を入力してください', 'error');
+          return;
+        }
+
+        btn.disabled = true;
+        btn.innerText = '保存中...';
+
+        google.script.run
+          .withSuccessHandler(() => {
+            showMessage('✅ 保存が完了しました！', 'success');
+            document.getElementById('amount').value = '';
+            document.getElementById('itemName').value = '';
+            document.getElementById('shopNameManual').value = '';
+            document.getElementById('shopSelect').selectedIndex = 0;
+            document.getElementById('shopNameManual').style.display = 'none';
+            btn.disabled = false;
+            btn.innerText = 'スプレッドシートに保存';
+          })
+          .withFailureHandler(err => {
+            showMessage('❌ エラー: ' + err.message, 'error');
+            btn.disabled = false;
+            btn.innerText = 'スプレッドシートに保存';
+          })
+          .addRows(data);
+      }
+
+      function showMessage(text, type) {
+        const msg = document.getElementById('message');
+        msg.innerText = text;
+        msg.className = type;
+        msg.style.display = 'block';
+        if (type === 'success') {
+          setTimeout(() => { msg.style.display = 'none'; }, 3000);
+        }
+      }
+    </script>
+  </body>
+</html>
